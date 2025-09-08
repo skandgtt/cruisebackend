@@ -702,10 +702,14 @@ class CruiseController {
         rating,
         travelType,
         cruiseType,
+        regions,
+        airports,
+        officialLink,
+        pricing,
+        dateBasedPricing,
         flights,
         preCruiseHotels,
         postCruiseHotels,
-        dateBasedPricing,
         itinerary
       } = req.body;
 
@@ -717,19 +721,125 @@ class CruiseController {
         });
       }
 
+      // Helpers
+      const isValidISODate = (value) => {
+        if (typeof value !== 'string') return false;
+        const date = new Date(value);
+        return !isNaN(date.getTime()) && value.length >= 10;
+      };
+      const isValidTime = (value) => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value || '');
+
+      // Field validations per rules
+      if (typeof name !== 'string' || name.length < 3 || name.length > 200) {
+        return res.status(400).json({ success: false, error: 'Invalid name', details: { name: '3-200 chars' } });
+      }
+      if (typeof description !== 'string' || description.length < 10 || description.length > 2000) {
+        return res.status(400).json({ success: false, error: 'Invalid description', details: { description: '10-2000 chars' } });
+      }
+
+      if (pricing) {
+        const keys = ['price','originalPrice','flyCruisePrice','insidePrice','outsidePrice','balconyPrice','suitePrice'];
+        for (const k of keys) {
+          if (pricing[k] !== undefined && (typeof pricing[k] !== 'number' || pricing[k] < 0)) {
+            return res.status(400).json({ success: false, error: 'Invalid pricing', details: { [k]: 'must be number >= 0' } });
+          }
+        }
+      }
+
+      if (Array.isArray(dateBasedPricing)) {
+        for (const item of dateBasedPricing) {
+          if (item.travelDate !== undefined && !isValidISODate(item.travelDate)) {
+            return res.status(400).json({ success: false, error: 'Invalid dateBasedPricing.travelDate' });
+          }
+          for (const k of ['inside','outside','suite']) {
+            if (item[k] !== undefined && (typeof item[k] !== 'number' || item[k] < 0)) {
+              return res.status(400).json({ success: false, error: `Invalid dateBasedPricing.${k}` });
+            }
+          }
+          if (item.markup !== undefined && (typeof item.markup !== 'number' || item.markup < 0 || item.markup > 100)) {
+            return res.status(400).json({ success: false, error: 'Invalid dateBasedPricing.markup' });
+          }
+        }
+      }
+
+      if (Array.isArray(flights)) {
+        for (const f of flights) {
+          if (f.price !== undefined && (typeof f.price !== 'number' || f.price < 0)) {
+            return res.status(400).json({ success: false, error: 'Invalid flights.price' });
+          }
+          if (f.flightClass !== undefined && !['Economy','Premium Economy','Business','First'].includes(f.flightClass)) {
+            return res.status(400).json({ success: false, error: 'Invalid flights.flightClass' });
+          }
+          if (f.outbound?.date && !isValidISODate(f.outbound.date)) {
+            return res.status(400).json({ success: false, error: 'Invalid flights.outbound.date' });
+          }
+          if (f.inbound?.date && !isValidISODate(f.inbound.date)) {
+            return res.status(400).json({ success: false, error: 'Invalid flights.inbound.date' });
+          }
+          const segments = [f?.outbound?.departure, f?.outbound?.arrival, f?.inbound?.departure, f?.inbound?.arrival];
+          for (const seg of segments) {
+            if (!seg) continue;
+            if (seg.time && !isValidTime(seg.time)) {
+              return res.status(400).json({ success: false, error: 'Invalid flights time format HH:MM' });
+            }
+          }
+        }
+      }
+
+      const validateHotel = (h) => {
+        if (h.rating !== undefined && (typeof h.rating !== 'number' || h.rating < 1 || h.rating > 5)) return 'rating 1-5';
+        if (h.price !== undefined && (typeof h.price !== 'number' || h.price < 0)) return 'price >= 0';
+        if (h.nights !== undefined && (typeof h.nights !== 'number' || h.nights < 1)) return 'nights >= 1';
+        if (h.checkInDate && !isValidISODate(h.checkInDate)) return 'checkInDate ISO';
+        if (h.checkOutDate && !isValidISODate(h.checkOutDate)) return 'checkOutDate ISO';
+        return null;
+      };
+      if (Array.isArray(preCruiseHotels)) {
+        for (const h of preCruiseHotels) {
+          const err = validateHotel(h);
+          if (err) return res.status(400).json({ success: false, error: `Invalid preCruiseHotels: ${err}` });
+        }
+      }
+      if (Array.isArray(postCruiseHotels)) {
+        for (const h of postCruiseHotels) {
+          const err = validateHotel(h);
+          if (err) return res.status(400).json({ success: false, error: `Invalid postCruiseHotels: ${err}` });
+        }
+      }
+
+      if (Array.isArray(itinerary)) {
+        for (const d of itinerary) {
+          if (d.dayNumber !== undefined && (typeof d.dayNumber !== 'number' || d.dayNumber < 1)) {
+            return res.status(400).json({ success: false, error: 'Invalid itinerary.dayNumber' });
+          }
+          if (d.date && !isValidISODate(d.date)) {
+            return res.status(400).json({ success: false, error: 'Invalid itinerary.date' });
+          }
+          if (d.startTime && !isValidTime(d.startTime)) {
+            return res.status(400).json({ success: false, error: 'Invalid itinerary.startTime' });
+          }
+          if (d.endTime && !isValidTime(d.endTime)) {
+            return res.status(400).json({ success: false, error: 'Invalid itinerary.endTime' });
+          }
+        }
+      }
+
       // Create package object for new format
       const packageData = {
         // Core package information
         name,
         description,
-        cruise: cruise || [],
+        cruise: cruise || {},
         highlights: highlights || [],
         included: included || [],
         notIncluded: notIncluded || [],
         featured: !!featured,
-        rating: rating || '4.0',
-        travelType: travelType || 'Standard',
+        rating: rating || undefined,
+        travelType: travelType || undefined,
         cruiseType: cruiseType || [],
+        regions: regions || [],
+        airports: airports || [],
+        officialLink: officialLink || undefined,
         
         // Travel logistics
         flights: flights || [],
@@ -737,6 +847,7 @@ class CruiseController {
         postCruiseHotels: postCruiseHotels || [],
         
         // Package features
+        pricing: pricing || {},
         dateBasedPricing: dateBasedPricing || [],
         itinerary: itinerary || [],
         
@@ -889,23 +1000,7 @@ class CruiseController {
   static async updatePackage(req, res) {
     try {
       const { id } = req.params;
-      const {
-        name,
-        description,
-        cruise,
-        highlights,
-        included,
-        notIncluded,
-        featured,
-        rating,
-        travelType,
-        cruiseType,
-        flights,
-        preCruiseHotels,
-        postCruiseHotels,
-        dateBasedPricing,
-        itinerary
-      } = req.body;
+      const updateBody = req.body;
 
       // Validate ObjectId format
       const { ObjectId } = require('mongodb');
@@ -915,39 +1010,117 @@ class CruiseController {
         });
       }
 
-      // Validate required fields for new format
-      if (name !== undefined && !name) {
-        return res.status(400).json({
-          error: 'Invalid field value',
-          message: 'name cannot be empty if provided'
-        });
+      // Basic validations when fields provided
+      const isValidISODate = (value) => {
+        if (typeof value !== 'string') return false;
+        const date = new Date(value);
+        return !isNaN(date.getTime()) && value.length >= 10;
+      };
+      const isValidTime = (value) => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value || '');
+      if (updateBody.name !== undefined) {
+        if (typeof updateBody.name !== 'string' || updateBody.name.length < 3 || updateBody.name.length > 200) {
+          return res.status(400).json({ success: false, error: 'Invalid name' });
+        }
       }
-
-      if (description !== undefined && !description) {
-        return res.status(400).json({
-          error: 'Invalid field value',
-          message: 'description cannot be empty if provided'
-        });
+      if (updateBody.description !== undefined) {
+        if (typeof updateBody.description !== 'string' || updateBody.description.length < 10 || updateBody.description.length > 2000) {
+          return res.status(400).json({ success: false, error: 'Invalid description' });
+        }
+      }
+      if (updateBody.pricing) {
+        const p = updateBody.pricing;
+        const keys = ['price','originalPrice','flyCruisePrice','insidePrice','outsidePrice','balconyPrice','suitePrice'];
+        for (const k of keys) {
+          if (p[k] !== undefined && (typeof p[k] !== 'number' || p[k] < 0)) {
+            return res.status(400).json({ success: false, error: 'Invalid pricing' });
+          }
+        }
+      }
+      if (Array.isArray(updateBody.dateBasedPricing)) {
+        for (const item of updateBody.dateBasedPricing) {
+          if (item.travelDate !== undefined && !isValidISODate(item.travelDate)) {
+            return res.status(400).json({ success: false, error: 'Invalid dateBasedPricing.travelDate' });
+          }
+          for (const k of ['inside','outside','suite']) {
+            if (item[k] !== undefined && (typeof item[k] !== 'number' || item[k] < 0)) {
+              return res.status(400).json({ success: false, error: `Invalid dateBasedPricing.${k}` });
+            }
+          }
+          if (item.markup !== undefined && (typeof item.markup !== 'number' || item.markup < 0 || item.markup > 100)) {
+            return res.status(400).json({ success: false, error: 'Invalid dateBasedPricing.markup' });
+          }
+        }
+      }
+      if (Array.isArray(updateBody.flights)) {
+        for (const f of updateBody.flights) {
+          if (f.price !== undefined && (typeof f.price !== 'number' || f.price < 0)) {
+            return res.status(400).json({ success: false, error: 'Invalid flights.price' });
+          }
+          if (f.flightClass !== undefined && !['Economy','Premium Economy','Business','First'].includes(f.flightClass)) {
+            return res.status(400).json({ success: false, error: 'Invalid flights.flightClass' });
+          }
+          if (f.outbound?.date && !isValidISODate(f.outbound.date)) {
+            return res.status(400).json({ success: false, error: 'Invalid flights.outbound.date' });
+          }
+          if (f.inbound?.date && !isValidISODate(f.inbound.date)) {
+            return res.status(400).json({ success: false, error: 'Invalid flights.inbound.date' });
+          }
+          const segments = [f?.outbound?.departure, f?.outbound?.arrival, f?.inbound?.departure, f?.inbound?.arrival];
+          for (const seg of segments) {
+            if (!seg) continue;
+            if (seg.time && !isValidTime(seg.time)) {
+              return res.status(400).json({ success: false, error: 'Invalid flights time format HH:MM' });
+            }
+          }
+        }
+      }
+      const validateHotel = (h) => {
+        if (h.rating !== undefined && (typeof h.rating !== 'number' || h.rating < 1 || h.rating > 5)) return 'rating 1-5';
+        if (h.price !== undefined && (typeof h.price !== 'number' || h.price < 0)) return 'price >= 0';
+        if (h.nights !== undefined && (typeof h.nights !== 'number' || h.nights < 1)) return 'nights >= 1';
+        if (h.checkInDate && !isValidISODate(h.checkInDate)) return 'checkInDate ISO';
+        if (h.checkOutDate && !isValidISODate(h.checkOutDate)) return 'checkOutDate ISO';
+        return null;
+      };
+      if (Array.isArray(updateBody.preCruiseHotels)) {
+        for (const h of updateBody.preCruiseHotels) {
+          const err = validateHotel(h);
+          if (err) return res.status(400).json({ success: false, error: `Invalid preCruiseHotels: ${err}` });
+        }
+      }
+      if (Array.isArray(updateBody.postCruiseHotels)) {
+        for (const h of updateBody.postCruiseHotels) {
+          const err = validateHotel(h);
+          if (err) return res.status(400).json({ success: false, error: `Invalid postCruiseHotels: ${err}` });
+        }
+      }
+      if (Array.isArray(updateBody.itinerary)) {
+        for (const d of updateBody.itinerary) {
+          if (d.dayNumber !== undefined && (typeof d.dayNumber !== 'number' || d.dayNumber < 1)) {
+            return res.status(400).json({ success: false, error: 'Invalid itinerary.dayNumber' });
+          }
+          if (d.date && !isValidISODate(d.date)) {
+            return res.status(400).json({ success: false, error: 'Invalid itinerary.date' });
+          }
+          if (d.startTime && !isValidTime(d.startTime)) {
+            return res.status(400).json({ success: false, error: 'Invalid itinerary.startTime' });
+          }
+          if (d.endTime && !isValidTime(d.endTime)) {
+            return res.status(400).json({ success: false, error: 'Invalid itinerary.endTime' });
+          }
+        }
       }
 
       // Build update data object with only provided fields
       const updateData = {};
       
-      if (name !== undefined) updateData.name = name;
-      if (description !== undefined) updateData.description = description;
-      if (cruise !== undefined) updateData.cruise = cruise;
-      if (highlights !== undefined) updateData.highlights = highlights;
-      if (included !== undefined) updateData.included = included;
-      if (notIncluded !== undefined) updateData.notIncluded = notIncluded;
-      if (featured !== undefined) updateData.featured = !!featured;
-      if (rating !== undefined) updateData.rating = rating;
-      if (travelType !== undefined) updateData.travelType = travelType;
-      if (cruiseType !== undefined) updateData.cruiseType = cruiseType;
-      if (flights !== undefined) updateData.flights = flights;
-      if (preCruiseHotels !== undefined) updateData.preCruiseHotels = preCruiseHotels;
-      if (postCruiseHotels !== undefined) updateData.postCruiseHotels = postCruiseHotels;
-      if (dateBasedPricing !== undefined) updateData.dateBasedPricing = dateBasedPricing;
-      if (itinerary !== undefined) updateData.itinerary = itinerary;
+      const allowed = ['name','description','cruise','highlights','included','notIncluded','featured','rating','travelType','cruiseType','regions','airports','officialLink','pricing','dateBasedPricing','flights','preCruiseHotels','postCruiseHotels','itinerary'];
+      for (const k of allowed) {
+        if (updateBody[k] !== undefined) {
+          if (k === 'featured') updateData[k] = !!updateBody[k];
+          else updateData[k] = updateBody[k];
+        }
+      }
 
       // Remove _id from update data if present
       delete updateData._id;
