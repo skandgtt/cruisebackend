@@ -756,9 +756,6 @@ class CruiseController {
               return res.status(400).json({ success: false, error: `Invalid dateBasedPricing.${k}` });
             }
           }
-          if (item.markup !== undefined && (typeof item.markup !== 'number' || item.markup < 0 || item.markup > 100)) {
-            return res.status(400).json({ success: false, error: 'Invalid dateBasedPricing.markup' });
-          }
         }
       }
 
@@ -1045,9 +1042,6 @@ class CruiseController {
             if (item[k] !== undefined && (typeof item[k] !== 'number' || item[k] < 0)) {
               return res.status(400).json({ success: false, error: `Invalid dateBasedPricing.${k}` });
             }
-          }
-          if (item.markup !== undefined && (typeof item.markup !== 'number' || item.markup < 0 || item.markup > 100)) {
-            return res.status(400).json({ success: false, error: 'Invalid dateBasedPricing.markup' });
           }
         }
       }
