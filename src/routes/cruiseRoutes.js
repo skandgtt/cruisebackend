@@ -18,5 +18,6 @@ router.delete('/packages/:id', CruiseController.deletePackage);
 // Order routes
 router.post('/orders', CruiseController.createOrder);
 router.get('/orders', CruiseController.getOrders);
+router.delete('/orders/:id', CruiseController.deleteOrder);
 
 module.exports = router;

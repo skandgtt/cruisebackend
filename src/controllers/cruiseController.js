@@ -1393,6 +1393,41 @@ class CruiseController {
       });
     }
   }
+
+  static async deleteOrder(req, res) {
+    try {
+      const { id } = req.params;
+      
+      // Validate ObjectId format
+      const { ObjectId } = require('mongodb');
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({
+          error: 'Invalid order ID format'
+        });
+      }
+
+      const db = getDB();
+      const result = await db.collection('orders').deleteOne({ _id: new ObjectId(id) });
+
+      if (result.deletedCount === 0) {
+        return res.status(404).json({
+          error: 'Order not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Order deleted successfully'
+      });
+
+    } catch (error) {
+      console.error('Error in deleteOrder controller:', error.message);
+      res.status(500).json({
+        error: 'Failed to delete order',
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = CruiseController;
