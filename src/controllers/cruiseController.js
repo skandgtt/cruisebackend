@@ -1292,6 +1292,107 @@ class CruiseController {
       });
     }
   }
+
+  static async createOrder(req, res) {
+    try {
+      const orderData = req.body;
+
+      // Validate required fields
+      if (!orderData.orderId || !orderData.bookingReference || !orderData.orderStatus) {
+        return res.status(400).json({
+          error: 'Missing required fields',
+          message: 'orderId, bookingReference, and orderStatus are required'
+        });
+      }
+
+      // Add timestamps
+      orderData.createdAt = new Date();
+      orderData.updatedAt = new Date();
+
+      // Save to MongoDB
+      const db = getDB();
+      const result = await db.collection('orders').insertOne(orderData);
+      
+      // Add the MongoDB _id to response
+      orderData._id = result.insertedId;
+
+      // Log the order creation
+      console.log('Order created and saved to MongoDB:', {
+        id: result.insertedId,
+        orderId: orderData.orderId,
+        bookingReference: orderData.bookingReference,
+        orderStatus: orderData.orderStatus
+      });
+
+      // Return the created order
+      res.status(201).json({
+        success: true,
+        message: 'Order created successfully',
+        data: orderData
+      });
+
+    } catch (error) {
+      console.error('Error in createOrder controller:', error.message);
+      res.status(500).json({
+        error: 'Failed to create order',
+        message: error.message
+      });
+    }
+  }
+
+  static async getOrders(req, res) {
+    try {
+      const { orderId, page = 1, limit = 10 } = req.query;
+      
+      const db = getDB();
+      const collection = db.collection('orders');
+      
+      // Build filter query
+      const filter = {};
+      if (orderId) {
+        filter.orderId = orderId;
+      }
+
+      // Calculate pagination
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      
+      // Get total count for pagination
+      const totalCount = await collection.countDocuments(filter);
+      
+      // Get orders with pagination
+      const orders = await collection
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .toArray();
+
+      // Calculate pagination info
+      const totalPages = Math.ceil(totalCount / parseInt(limit));
+      const hasNext = parseInt(page) < totalPages;
+      const hasPrev = parseInt(page) > 1;
+
+      res.json({
+        success: true,
+        data: orders,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages,
+          totalCount,
+          limit: parseInt(limit),
+          hasNext,
+          hasPrev
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in getOrders controller:', error.message);
+      res.status(500).json({
+        error: 'Failed to fetch orders',
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = CruiseController;
