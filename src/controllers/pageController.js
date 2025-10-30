@@ -122,14 +122,17 @@ class PageController {
         }
       }
 
-      const result = await db.collection('pages').findOneAndUpdate(
+      const updateResult = await db.collection('pages').updateOne(
         { _id: new ObjectId(id) },
-        { $set: updates },
-        { returnDocument: 'after' }
+        { $set: updates }
       );
 
-      if (!result.value) return res.status(404).json({ success: false, error: 'Page not found' });
-      return res.json({ success: true, data: result.value });
+      if (updateResult.matchedCount === 0) {
+        return res.status(404).json({ success: false, error: 'Page not found' });
+      }
+
+      const updatedDoc = await db.collection('pages').findOne({ _id: new ObjectId(id) });
+      return res.json({ success: true, data: updatedDoc });
     } catch (error) {
       console.error('Error updating page:', error);
       return res.status(500).json({ success: false, error: 'Failed to update page' });
