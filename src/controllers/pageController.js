@@ -13,7 +13,8 @@ class PageController {
         cruiseSnapshot,
         seo,
         visibility,
-        filters
+        filters,
+        folder
       } = req.body;
 
       if (!title || !slug) {
@@ -31,6 +32,7 @@ class PageController {
         seo: seo || {},
         visibility: visibility || { isFeatured: false },
         filters: filters || {},
+        folder: folder || null,
         createdAt: now,
         updatedAt: now
       };
