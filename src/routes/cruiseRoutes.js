@@ -3,6 +3,7 @@ const router = express.Router();
 const CruiseController = require('../controllers/cruiseController');
 const PageController = require('../controllers/pageController');
 const FolderController = require('../controllers/folderController');
+const CruiseLineOfferController = require('../controllers/cruiseLineOfferController');
 
 router.get('/cruises', CruiseController.getCruises);
 router.get('/operators', CruiseController.getOperators);
@@ -30,6 +31,13 @@ router.get('/folders/:id', FolderController.getFolderById);
 router.post('/folders', FolderController.createFolder);
 router.put('/folders/:id', FolderController.updateFolder);
 router.delete('/folders/:id', FolderController.deleteFolder);
+
+// Cruise line offer routes
+router.get('/cruise-line-offers', CruiseLineOfferController.getCruiseLineOffers);
+router.get('/cruise-line-offers/:id', CruiseLineOfferController.getCruiseLineOfferById);
+router.post('/cruise-line-offers', CruiseLineOfferController.createCruiseLineOffer);
+router.put('/cruise-line-offers/:id', CruiseLineOfferController.updateCruiseLineOffer);
+router.delete('/cruise-line-offers/:id', CruiseLineOfferController.deleteCruiseLineOffer);
 
 // Order routes
 router.post('/orders', CruiseController.createOrder);
