@@ -4,7 +4,7 @@ const { getDB } = require('../config/database');
 class FolderController {
   static async createFolder(req, res) {
     try {
-      const { name } = req.body;
+      const { name, color } = req.body;
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
         return res.status(400).json({ success: false, error: 'name is required' });
       }
@@ -12,6 +12,7 @@ class FolderController {
       const now = new Date();
       const folder = {
         name: name.trim(),
+        color: color || "#eab308",
         createdAt: now,
         updatedAt: now
       };
@@ -83,15 +84,19 @@ class FolderController {
       if (!ObjectId.isValid(id)) {
         return res.status(400).json({ success: false, error: 'Invalid id' });
       }
-      const { name } = req.body;
+      const { name, color } = req.body;
       if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
         return res.status(400).json({ success: false, error: 'name must be a non-empty string' });
       }
 
       const db = getDB();
+      const updates = { updatedAt: new Date() };
+      if (name !== undefined) updates.name = name.trim();
+      if (color !== undefined) updates.color = color;
+
       const updateResult = await db.collection('folders').updateOne(
         { _id: new ObjectId(id) },
-        { $set: { ...(name !== undefined ? { name: name.trim() } : {}), updatedAt: new Date() } }
+        { $set: updates }
       );
 
       if (updateResult.matchedCount === 0) {
