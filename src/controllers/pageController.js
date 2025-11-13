@@ -14,7 +14,8 @@ class PageController {
         seo,
         visibility,
         filters,
-        folder
+        folder,
+        folderId
       } = req.body;
 
       if (!title || !slug) {
@@ -33,6 +34,7 @@ class PageController {
         visibility: visibility || { isFeatured: false },
         filters: filters || {},
         folder: folder || null,
+        folderId: folderId || null,
         createdAt: now,
         updatedAt: now
       };
