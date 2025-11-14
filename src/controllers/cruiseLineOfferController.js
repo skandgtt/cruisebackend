@@ -11,7 +11,8 @@ class CruiseLineOfferController {
         subtitle,
         description,
         cruiseLine,
-        image
+        image,
+        packageId
       } = req.body;
 
       if (!title) {
@@ -27,6 +28,7 @@ class CruiseLineOfferController {
         description: description || null,
         cruiseLine: cruiseLine || null,
         image: image || null,
+        packageId: packageId || null,
         createdAt: now,
         updatedAt: now
       };
@@ -116,7 +118,8 @@ class CruiseLineOfferController {
         subtitle,
         description,
         cruiseLine,
-        image
+        image,
+        packageId
       } = req.body;
 
       const db = getDB();
@@ -129,6 +132,7 @@ class CruiseLineOfferController {
       if (description !== undefined) updates.description = description;
       if (cruiseLine !== undefined) updates.cruiseLine = cruiseLine;
       if (image !== undefined) updates.image = image;
+      if (packageId !== undefined) updates.packageId = packageId;
 
       const updateResult = await db.collection('cruise_line_offers').updateOne(
         { _id: new ObjectId(id) },
