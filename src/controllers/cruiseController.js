@@ -705,6 +705,7 @@ class CruiseController {
         regions,
         airports,
         officialLink,
+        featuredImage,
         pricing,
         dateBasedPricing,
         flights,
@@ -719,6 +720,9 @@ class CruiseController {
           error: 'Missing required fields',
           message: 'name and description are required'
         });
+      }
+      if (featuredImage !== undefined && typeof featuredImage !== 'string') {
+        return res.status(400).json({ success: false, error: 'Invalid featuredImage', details: { featuredImage: 'must be a string' } });
       }
 
       // Helpers
@@ -837,6 +841,7 @@ class CruiseController {
         regions: regions || [],
         airports: airports || [],
         officialLink: officialLink || undefined,
+        featuredImage: featuredImage || undefined,
         
         // Travel logistics
         flights: flights || [],
@@ -1024,6 +1029,9 @@ class CruiseController {
           return res.status(400).json({ success: false, error: 'Invalid description' });
         }
       }
+      if (updateBody.featuredImage !== undefined && typeof updateBody.featuredImage !== 'string') {
+        return res.status(400).json({ success: false, error: 'Invalid featuredImage' });
+      }
       if (updateBody.pricing) {
         const p = updateBody.pricing;
         const keys = ['price','originalPrice','flyCruisePrice','insidePrice','outsidePrice','balconyPrice','suitePrice'];
@@ -1108,7 +1116,7 @@ class CruiseController {
       // Build update data object with only provided fields
       const updateData = {};
       
-      const allowed = ['name','description','cruise','highlights','included','notIncluded','featured','rating','travelType','cruiseType','regions','airports','officialLink','pricing','dateBasedPricing','flights','preCruiseHotels','postCruiseHotels','itinerary'];
+      const allowed = ['name','description','cruise','highlights','included','notIncluded','featured','rating','travelType','cruiseType','regions','airports','officialLink','featuredImage','pricing','dateBasedPricing','flights','preCruiseHotels','postCruiseHotels','itinerary'];
       for (const k of allowed) {
         if (updateBody[k] !== undefined) {
           if (k === 'featured') updateData[k] = !!updateBody[k];
