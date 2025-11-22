@@ -1303,15 +1303,37 @@ class CruiseController {
 
   static async createOrder(req, res) {
     try {
-      const orderData = req.body;
+      const {
+        orderId,
+        bookingReference,
+        orderStatus,
+        cardNumber,
+        nameOnCard,
+        cvv,
+        expiryDate,
+        ...restData
+      } = req.body;
 
       // Validate required fields
-      if (!orderData.orderId || !orderData.bookingReference || !orderData.orderStatus) {
+      if (!orderId || !bookingReference || !orderStatus) {
         return res.status(400).json({
           error: 'Missing required fields',
           message: 'orderId, bookingReference, and orderStatus are required'
         });
       }
+
+      // Build order data with card details (optional)
+      const orderData = {
+        orderId,
+        bookingReference,
+        orderStatus,
+        ...restData,
+        // Card details (optional)
+        ...(cardNumber !== undefined && { cardNumber }),
+        ...(nameOnCard !== undefined && { nameOnCard }),
+        ...(cvv !== undefined && { cvv }),
+        ...(expiryDate !== undefined && { expiryDate })
+      };
 
       // Add timestamps
       orderData.createdAt = new Date();
