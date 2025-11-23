@@ -11,10 +11,10 @@
     "axios": "^1.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
-    "ecommpay": "^1.0.0",
+    "ecommpay": "^0.1.7",
     "express": "^4.21.2",
-    "express-rate-limit": "^7.1.5",
-    "joi": "^17.11.0",
+    "express-rate-limit": "^7.5.1",
+    "joi": "^17.13.3",
     "mongodb": "^6.18.0"
   },
   "devDependencies": {
