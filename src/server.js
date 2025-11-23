@@ -18,6 +18,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api', cruiseRoutes);
+app.use('/api', require('./routes/paymentRoutes'));
+app.use('/api', require('./routes/paymentToggle'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

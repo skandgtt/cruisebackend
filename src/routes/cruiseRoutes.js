@@ -4,7 +4,6 @@ const CruiseController = require('../controllers/cruiseController');
 const PageController = require('../controllers/pageController');
 const FolderController = require('../controllers/folderController');
 const CruiseLineOfferController = require('../controllers/cruiseLineOfferController');
-const PaymentGatewayController = require('../controllers/paymentGatewayController');
 
 router.get('/cruises', CruiseController.getCruises);
 router.get('/operators', CruiseController.getOperators);
@@ -44,9 +43,5 @@ router.delete('/cruise-line-offers/:id', CruiseLineOfferController.deleteCruiseL
 router.post('/orders', CruiseController.createOrder);
 router.get('/orders', CruiseController.getOrders);
 router.delete('/orders/:id', CruiseController.deleteOrder);
-
-// Payment gateway routes
-router.get('/payment-gateway/status', PaymentGatewayController.getStatus);
-router.post('/payment-gateway/status', PaymentGatewayController.setStatus);
 
 module.exports = router;
