@@ -543,13 +543,85 @@ class CruiseController {
         operator, 
         startDate, 
         start_date_range_end,
-        page = 1, 
+        page = '1', 
         ship_name, 
         region, 
         start_from,
         destination 
       } = req.query;
 
+      // Special mode: page=all → fetch all pages in parallel and merge
+      if (page === 'all') {
+        // 1) Fetch first page to discover total pages
+        const firstPage = await CruiseController.fetchCruiseData(
+          1,
+          operator,
+          startDate,
+          start_date_range_end,
+          ship_name,
+          region,
+          start_from,
+          destination
+        );
+
+        const total = firstPage?.total;
+        const perPage = firstPage?.count || (Array.isArray(firstPage?.cruises) ? firstPage.cruises.length : 0);
+
+        // If we can't determine pagination, just return the first page
+        if (!total || !perPage || perPage === 0) {
+          return res.json(firstPage);
+        }
+
+        const totalPages = Math.ceil(total / perPage);
+
+        // If only one page, return it as-is
+        if (totalPages <= 1) {
+          return res.json(firstPage);
+        }
+
+        // 2) Fetch remaining pages in parallel
+        const pageNumbers = [];
+        for (let p = 2; p <= totalPages; p++) {
+          pageNumbers.push(p);
+        }
+
+        const otherPages = await Promise.all(
+          pageNumbers.map((p) =>
+            CruiseController.fetchCruiseData(
+              p,
+              operator,
+              startDate,
+              start_date_range_end,
+              ship_name,
+              region,
+              start_from,
+              destination
+            )
+          )
+        );
+
+        // 3) Merge all cruises into a single array
+        const allCruises = [
+          ...(firstPage.cruises || []),
+          ...otherPages.flatMap((pg) => pg?.cruises || [])
+        ];
+
+        const merged = {
+          ...firstPage,
+          cruises: allCruises,
+          count: allCruises.length,
+          // Optional: neutralize pagination links since we've returned everything
+          _links: {
+            ...(firstPage._links || {}),
+            next: null,
+            last: null
+          }
+        };
+
+        return res.json(merged);
+      }
+
+      // Default: single-page behavior (unchanged)
       const cruiseData = await CruiseController.fetchCruiseData(
         page, 
         operator, 
